@@ -4,4 +4,5 @@
 - UI-configured integration that injects recurring tasks into HA to-do lists at local midnight.
 - Duplicate prevention via needs_action check.
 - Run Now button entity to trigger immediately.
+- RunTasks panel with add/edit/delete UI and Test Now trigger.
 - HACS-ready manifest and metadata.

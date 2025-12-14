@@ -1,12 +1,13 @@
 ﻿# RunTasks
 
-RunTasks is a Home Assistant custom integration that drops recurring to-do items into existing `todo` entities at local midnight. Configured entirely via the HA UI (no YAML).
+RunTasks is a Home Assistant custom integration that drops recurring to-do items into existing `todo` entities at local midnight. Configured entirely via the HA UI (no YAML) with a built-in panel for editing tasks.
 
 ## Features (v0.1 target)
 - Midnight injector: adds items on their due day at 00:00 local time.
 - Recurring cadence: anchor with `start_date` + `weekday` + `period_days` (e.g., every 14 days on Tuesday).
 - Duplicate guard: skips if a `needs_action` item with the same summary already exists.
 - UI config: paste a JSON list of tasks in the config flow; edit later via Options.
+- Built-in panel: add/edit/delete tasks in the RunTasks sidebar page, with a **Test Now** button.
 - Run Now button: HA exposes a `RunTasks: Run Now` button entity to trigger immediately (or call the `runtasks.run_now` service).
 - Lightweight: HACS-installable.
 
@@ -16,7 +17,8 @@ RunTasks is a Home Assistant custom integration that drops recurring to-do items
 
 ## Configuration (UI)
 1. Settings → Devices & Services → Integrations → Add Integration → search “RunTasks”.
-2. Paste tasks as JSON when prompted (example below). You can edit later via Configure → Options.
+2. Paste tasks as JSON when prompted (example below).
+3. Edit tasks in the RunTasks sidebar panel (`/runtasks`) with add/edit/delete controls and a Test Now button.
 
 ```yaml
 [
@@ -57,8 +59,9 @@ Notes:
 ## Dev workflow
 - Place the repo under `/config/custom_components/runtasks/` in your HA environment and restart HA.
 - Add the integration through the UI, paste tasks JSON, and save.
+- Open the RunTasks panel from the sidebar (`/runtasks`) to add/edit/delete tasks and hit **Test Now**.
 - Watch logs for: `RunTasks loaded via UI with X task(s)`.
-- For quick testing, use the `RunTasks: Run Now` button entity or tweak `weekday`/`start_date` in Options to force a due condition.
+- For quick testing, use the RunTasks panel **Test Now** button, the `RunTasks: Run Now` button entity, or tweak `weekday`/`start_date` in Options.
 
 ## Acceptance criteria (v0.1)
 - Schedules at local midnight after first HA start and reschedules daily.

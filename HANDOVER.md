@@ -26,6 +26,7 @@ RunTasks/
 │     ├─ coordinator.py           # (optional for future entities)
 │     ├─ config.py                # JSON parsing / validation helpers
 │     ├─ button.py                # Run Now button entity
+│     ├─ www/runtasks-panel.js    # Built-in panel bundle
 │     ├─ strings.json             # (optional for later)
 │     └─ translations/            # (optional; for config_flow later)
 ├─ hacs.json
@@ -285,7 +286,9 @@ class RunTasksRunNowButton(ButtonEntity):
 custom_components/runtasks/__init__.py
 from __future__ import annotations
 import logging
+from pathlib import Path
 
+from homeassistant.components import frontend, websocket_api
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
 from homeassistant.core import HomeAssistant
@@ -298,6 +301,8 @@ from .scheduler import schedule_midnight_daily
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.BUTTON]
+PANEL_URL = "runtasks"
+STATIC_DIR = Path(__file__).parent / "www"
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     # No YAML support; config entries only.
@@ -308,6 +313,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             _async_handle_run_now(hass),
             vol.Schema({vol.Optional("entry_id"): str}),
         )
+    _register_panel(hass)
+    _register_ws(hass)
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -355,6 +362,84 @@ def _async_handle_run_now(hass: HomeAssistant):
             await process_due_tasks(hass, tasks)
 
     return handler
+
+def _register_panel(hass: HomeAssistant) -> None:
+    if STATIC_DIR.exists():
+        hass.http.register_static_path("/runtasks-static", str(STATIC_DIR), cache_headers=False)
+    frontend.async_register_built_in_panel(
+        hass,
+        component_name="custom",
+        frontend_url_path=PANEL_URL,
+        sidebar_title="RunTasks",
+        sidebar_icon="mdi:clipboard-text",
+        module_url="/runtasks-static/runtasks-panel.js",
+        require_admin=True,
+        config={"name": "runtasks-panel"},
+    )
+
+def _register_ws(hass: HomeAssistant) -> None:
+    @websocket_api.websocket_command(
+        {
+            vol.Required("type"): "runtasks/list",
+            vol.Required("entry_id"): str,
+        }
+    )
+    @websocket_api.async_response
+    async def ws_list(hass: HomeAssistant, connection, msg):
+        entry = hass.config_entries.async_get_entry(msg["entry_id"])
+        if not entry:
+            connection.send_error(msg["id"], "not_found", "entry not found")
+            return
+        tasks = entry.options.get(CONF_TASKS, entry.data.get(CONF_TASKS, []))
+        connection.send_result(msg["id"], {"tasks": tasks})
+
+    @websocket_api.websocket_command(
+        {
+            vol.Required("type"): "runtasks/save",
+            vol.Required("entry_id"): str,
+            vol.Required("tasks"): list,
+        }
+    )
+    @websocket_api.async_response
+    async def ws_save(hass: HomeAssistant, connection, msg):
+        entry = hass.config_entries.async_get_entry(msg["entry_id"])
+        if not entry:
+            connection.send_error(msg["id"], "not_found", "entry not found")
+            return
+        try:
+            tasks = validate_tasks(msg["tasks"])
+        except ValueError as err:
+            connection.send_error(msg["id"], "invalid", str(err))
+            return
+        hass.config_entries.async_update_entry(entry, options={CONF_TASKS: tasks})
+        await hass.config_entries.async_reload(entry.entry_id)
+        connection.send_result(msg["id"], {"tasks": tasks})
+
+    @websocket_api.websocket_command(
+        {
+            vol.Required("type"): "runtasks/run_now",
+            vol.Required("entry_id"): str,
+        }
+    )
+    @websocket_api.async_response
+    async def ws_run_now(hass: HomeAssistant, connection, msg):
+        entry_id = msg["entry_id"]
+        entries = hass.data.get(DOMAIN, {})
+        data = entries.get(entry_id)
+        if not data:
+            connection.send_error(msg["id"], "not_found", "entry not loaded")
+            return
+        from .scheduler import process_due_tasks  # local import to avoid cycle
+
+        await process_due_tasks(hass, data.get(CONF_TASKS, []))
+        connection.send_result(msg["id"], {"status": "ok"})
+
+    websocket_api.async_register_command(hass, ws_list)
+    websocket_api.async_register_command(hass, ws_save)
+    websocket_api.async_register_command(hass, ws_run_now)
+
+custom_components/runtasks/www/runtasks-panel.js
+- Panel JS bundle serves the RunTasks admin UI (add/edit/delete, Test Now) via the built-in panel registered at /runtasks.
 
 hacs.json
 {
@@ -411,11 +496,13 @@ Ensure path is custom_components/runtasks/....
 
 Restart HA, then add the integration via UI and paste tasks JSON.
 
+Open the RunTasks panel from the sidebar (/runtasks) to add/edit/delete tasks and hit "Test Now".
+
 Verify logs: "RunTasks loaded via UI with %d task(s)".
 
 Create/identify a to-do list entity (e.g., Local To-do -> todo.house_chores).
 
-(Dev) Temporarily change weekday/start_date in Options to force a due condition and confirm item injection by running the Run Now button or advancing system date/time in a test env.
+(Dev) Temporarily change weekday/start_date in the panel or Options to force a due condition and confirm item injection by running Test Now or advancing system date/time in a test env.
 
 6) Acceptance Criteria (v0.1)
 
@@ -423,7 +510,7 @@ Create/identify a to-do list entity (e.g., Local To-do -> todo.house_chores).
 - On a due day, an item with the configured name is added to the target todo entity at 00:00 local time with due_datetime set to midnight.
 - Duplicate items are not created if a needs_action item with the same summary already exists.
 - Supports at least 40 tasks without separate automations.
-- Run Now button/service triggers the same logic immediately.
+- Run Now button/service and panel Test Now trigger the same logic immediately.
 
 7) Test Plan (manual)
 
@@ -435,11 +522,11 @@ Duplicate prevention: Pre-create Red bin in the list and run midnight job; ensur
 
 Time zone: Confirm midnight is taken from HA local timezone (Sydney), not UTC.
 
-Run Now: Press button entity or call service runtasks.run_now and verify immediate injection when due.
+Run Now: Press button entity, panel Test Now, or call service runtasks.run_now and verify immediate injection when due.
 
 8) Roadmap
 
-v0.1.0 (current): UI config flow + options, Run Now button/service, midnight scheduler, duplicate prevention, HACS-installable.
+v0.1.0 (current): UI config flow + options, built-in panel (add/edit/delete + Test Now), Run Now button/service, midnight scheduler, duplicate prevention, HACS-installable.
 
 v0.2.0: Per-task inject time override, optional pre-notice (e.g., T-1 day).
 

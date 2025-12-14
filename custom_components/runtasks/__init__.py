@@ -1,6 +1,8 @@
 from __future__ import annotations
 import logging
+from pathlib import Path
 
+from homeassistant.components import frontend, websocket_api
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
 from homeassistant.core import HomeAssistant
@@ -13,6 +15,8 @@ from .scheduler import schedule_midnight_daily
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.BUTTON]
+PANEL_URL = "runtasks"
+STATIC_DIR = Path(__file__).parent / "www"
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -24,6 +28,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             _async_handle_run_now(hass),
             vol.Schema({vol.Optional("entry_id"): str}),
         )
+    _register_panel(hass)
+    _register_ws(hass)
     return True
 
 
@@ -75,3 +81,80 @@ def _async_handle_run_now(hass: HomeAssistant):
             await process_due_tasks(hass, tasks)
 
     return handler
+
+
+def _register_panel(hass: HomeAssistant) -> None:
+    if STATIC_DIR.exists():
+        hass.http.register_static_path("/runtasks-static", str(STATIC_DIR), cache_headers=False)
+    frontend.async_register_built_in_panel(
+        hass,
+        component_name="custom",
+        frontend_url_path=PANEL_URL,
+        sidebar_title="RunTasks",
+        sidebar_icon="mdi:clipboard-text",
+        module_url="/runtasks-static/runtasks-panel.js",
+        require_admin=True,
+        config={"name": "runtasks-panel"},
+    )
+
+
+def _register_ws(hass: HomeAssistant) -> None:
+    @websocket_api.websocket_command(
+        {
+            vol.Required("type"): "runtasks/list",
+            vol.Required("entry_id"): str,
+        }
+    )
+    @websocket_api.async_response
+    async def ws_list(hass: HomeAssistant, connection, msg):
+        entry = hass.config_entries.async_get_entry(msg["entry_id"])
+        if not entry:
+            connection.send_error(msg["id"], "not_found", "entry not found")
+            return
+        tasks = entry.options.get(CONF_TASKS, entry.data.get(CONF_TASKS, []))
+        connection.send_result(msg["id"], {"tasks": tasks})
+
+    @websocket_api.websocket_command(
+        {
+            vol.Required("type"): "runtasks/save",
+            vol.Required("entry_id"): str,
+            vol.Required("tasks"): list,
+        }
+    )
+    @websocket_api.async_response
+    async def ws_save(hass: HomeAssistant, connection, msg):
+        entry = hass.config_entries.async_get_entry(msg["entry_id"])
+        if not entry:
+            connection.send_error(msg["id"], "not_found", "entry not found")
+            return
+        try:
+            tasks = validate_tasks(msg["tasks"])
+        except ValueError as err:
+            connection.send_error(msg["id"], "invalid", str(err))
+            return
+        hass.config_entries.async_update_entry(entry, options={CONF_TASKS: tasks})
+        await hass.config_entries.async_reload(entry.entry_id)
+        connection.send_result(msg["id"], {"tasks": tasks})
+
+    @websocket_api.websocket_command(
+        {
+            vol.Required("type"): "runtasks/run_now",
+            vol.Required("entry_id"): str,
+        }
+    )
+    @websocket_api.async_response
+    async def ws_run_now(hass: HomeAssistant, connection, msg):
+        entry_id = msg["entry_id"]
+        entries = hass.data.get(DOMAIN, {})
+        data = entries.get(entry_id)
+        if not data:
+            connection.send_error(msg["id"], "not_found", "entry not loaded")
+            return
+        from .scheduler import process_due_tasks  # local import to avoid cycle
+
+        await process_due_tasks(hass, data.get(CONF_TASKS, []))
+        connection.send_result(msg["id"], {"status": "ok"})
+
+    websocket_api.async_register_command(hass, ws_list)
+    websocket_api.async_register_command(hass, ws_save)
+    websocket_api.async_register_command(hass, ws_run_now)
