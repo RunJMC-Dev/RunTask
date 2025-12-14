@@ -1,5 +1,23 @@
 DOMAIN = "runtasks"
 CONF_TASKS = "tasks"
+DATA_UNSUB = "unsub"
+SERVICE_RUN_NOW = "run_now"
+DEFAULT_TASKS = [
+    {
+        "name": "Red bin",
+        "list": "todo.house_chores",
+        "start_date": "2025-11-18",
+        "period_days": 14,
+        "weekday": 1,
+    },
+    {
+        "name": "Yellow bin",
+        "list": "todo.house_chores",
+        "start_date": "2025-11-25",
+        "period_days": 14,
+        "weekday": 1,
+    },
+]
 
 # Task keys
 K_NAME = "name"

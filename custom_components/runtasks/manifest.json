@@ -2,6 +2,7 @@
   "domain": "runtasks",
   "name": "RunTasks",
   "version": "0.1.0",
+  "config_flow": true,
   "documentation": "",
   "requirements": [],
   "codeowners": ["@JonCorf"],

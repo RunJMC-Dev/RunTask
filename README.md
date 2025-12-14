@@ -1,38 +1,47 @@
-# RunTasks
+﻿# RunTasks
 
-RunTasks is a Home Assistant custom integration that drops recurring to-do items into existing `todo` entities at local midnight. YAML-only for v0.1, no UI yet.
+RunTasks is a Home Assistant custom integration that drops recurring to-do items into existing `todo` entities at local midnight. Configured entirely via the HA UI (no YAML).
 
 ## Features (v0.1 target)
 - Midnight injector: adds items on their due day at 00:00 local time.
 - Recurring cadence: anchor with `start_date` + `weekday` + `period_days` (e.g., every 14 days on Tuesday).
 - Duplicate guard: skips if a `needs_action` item with the same summary already exists.
-- Lightweight: YAML config only; HACS-installable.
+- UI config: paste a JSON list of tasks in the config flow; edit later via Options.
+- Run Now button: HA exposes a `RunTasks: Run Now` button entity to trigger immediately (or call the `runtasks.run_now` service).
+- Lightweight: HACS-installable.
 
 ## Install
 1. Drop the repo into Home Assistant `/config` so files land under `custom_components/runtasks/` (or add as a custom repository in HACS once published).
 2. Restart Home Assistant.
 
-## Configuration (YAML)
-Add to `configuration.yaml`:
+## Configuration (UI)
+1. Settings → Devices & Services → Integrations → Add Integration → search “RunTasks”.
+2. Paste tasks as JSON when prompted (example below). You can edit later via Configure → Options.
 
 ```yaml
-runtasks:
-  tasks:
-    - name: "Red bin"
-      list: "todo.house_chores"
-      start_date: "2025-11-18"
-      period_days: 14
-      weekday: 1     # 0=Mon..6=Sun
-    - name: "Yellow bin"
-      list: "todo.house_chores"
-      start_date: "2025-11-25"
-      period_days: 14
-      weekday: 1
-    - name: "Vacuuming"
-      list: "todo.house_chores"
-      start_date: "2025-11-15"
-      period_days: 7
-      weekday: 5
+[
+  {
+    "name": "Red bin",
+    "list": "todo.house_chores",
+    "start_date": "2025-11-18",
+    "period_days": 14,
+    "weekday": 1
+  },
+  {
+    "name": "Yellow bin",
+    "list": "todo.house_chores",
+    "start_date": "2025-11-25",
+    "period_days": 14,
+    "weekday": 1
+  },
+  {
+    "name": "Vacuuming",
+    "list": "todo.house_chores",
+    "start_date": "2025-11-15",
+    "period_days": 7,
+    "weekday": 5
+  }
+]
 ```
 
 Notes:
@@ -43,12 +52,13 @@ Notes:
 ## How it works
 - On HA start, RunTasks validates tasks and schedules a daily run at local midnight.
 - On each run, it checks tasks due that day and calls `todo.get_items` then `todo.add_item` to inject the to-dos with `due_datetime` set to midnight.
+- A `RunTasks: Run Now` button entity (and `runtasks.run_now` service) let you trigger the same logic immediately.
 
 ## Dev workflow
-- Place the repo under `/config/custom_components/runtasks/` in your HA environment.
-- Settings ? Devices & Services ? Check Config, then restart.
-- Watch logs for: `RunTasks loaded with X task(s)`.
-- For quick testing, temporarily tweak `weekday`/`start_date` to force a due condition and observe the target to-do list.
+- Place the repo under `/config/custom_components/runtasks/` in your HA environment and restart HA.
+- Add the integration through the UI, paste tasks JSON, and save.
+- Watch logs for: `RunTasks loaded via UI with X task(s)`.
+- For quick testing, use the `RunTasks: Run Now` button entity or tweak `weekday`/`start_date` in Options to force a due condition.
 
 ## Acceptance criteria (v0.1)
 - Schedules at local midnight after first HA start and reschedules daily.
@@ -57,13 +67,13 @@ Notes:
 - Handles 40+ tasks without extra automations.
 
 ## Roadmap
-- v0.1.0: YAML config, midnight scheduler, duplicate prevention, HACS-installable.
-- v0.2.0: Config Flow + Options Flow, per-task inject time override, optional pre-notice (e.g., T-1 day).
+- v0.1.0: UI config flow + options, Run Now button, midnight scheduler, duplicate prevention, HACS-installable.
+- v0.2.0: Per-task inject time override, optional pre-notice (e.g., T-1 day).
 - v0.3.0: Entities (next due per task), pause/resume toggles, holiday offsets.
 - v0.4.0: Import/export tasks, migration helpers, tests.
 
 ## Limitations
-- No UI editor in v0.1.
+- JSON text entry (no per-task form/validation beyond JSON parse).
 - No holiday handling.
 - Cadence anchored to `start_date` (not completion-based reschedule).
 

@@ -1,0 +1,24 @@
+﻿{
+  "config": {
+    "step": {
+      "user": {
+        "title": "RunTasks",
+        "description": "Paste a JSON list of tasks. Example:\n{example}"
+      }
+    },
+    "error": {
+      "invalid_tasks": "Invalid tasks JSON: {error}"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "RunTasks options",
+        "description": "Edit tasks JSON. Example:\n{example}"
+      }
+    },
+    "error": {
+      "invalid_tasks": "Invalid tasks JSON: {error}"
+    }
+  }
+}

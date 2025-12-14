@@ -1,8 +1,20 @@
 from __future__ import annotations
+import json
 from datetime import datetime
 from typing import Any
 
 from .const import K_NAME, K_LIST, K_START_DATE, K_PERIOD_DAYS, K_WEEKDAY
+
+
+def parse_tasks_blob(blob: str) -> list[dict[str, Any]]:
+    """Parse tasks from a JSON blob provided via the UI."""
+    try:
+        parsed = json.loads(blob or "[]")
+    except Exception as e:
+        raise ValueError(f"Tasks must be valid JSON: {e}") from e
+    if not isinstance(parsed, list):
+        raise ValueError("Tasks must be a JSON list")
+    return validate_tasks(parsed)
 
 
 def validate_tasks(raw: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -11,7 +23,7 @@ def validate_tasks(raw: list[dict[str, Any]]) -> list[dict[str, Any]]:
         try:
             _ = t[K_NAME]
             _ = t[K_LIST]
-            sd = datetime.strptime(t[K_START_DATE], "%Y-%m-%d")  # validate
+            _ = datetime.strptime(t[K_START_DATE], "%Y-%m-%d")  # validate
             pd = int(t[K_PERIOD_DAYS])
             wd = int(t[K_WEEKDAY])
             if not (0 <= wd <= 6):
