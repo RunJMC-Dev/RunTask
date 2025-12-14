@@ -1,0 +1,7 @@
+{
+  "name": "RunTasks",
+  "content_in_root": false,
+  "render_readme": true,
+  "domains": ["integration"],
+  "homeassistant": "2024.12.0"
+}

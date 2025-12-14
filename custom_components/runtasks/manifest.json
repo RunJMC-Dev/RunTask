@@ -1,0 +1,9 @@
+{
+  "domain": "runtasks",
+  "name": "RunTasks",
+  "version": "0.1.0",
+  "documentation": "",
+  "requirements": [],
+  "codeowners": ["@JonCorf"],
+  "iot_class": "local_push"
+}
