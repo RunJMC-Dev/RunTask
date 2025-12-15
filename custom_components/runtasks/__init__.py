@@ -101,9 +101,8 @@ def _register_panel(hass: HomeAssistant) -> None:
         frontend_url_path=PANEL_URL,
         sidebar_title="RunTasks",
         sidebar_icon="mdi:clipboard-text",
-        module_url="/runtasks-static/runtasks-panel.js",
         require_admin=True,
-        config={"name": "runtasks-panel"},
+        config={"name": "runtasks-panel", "module_url": "/runtasks-static/runtasks-panel.js"},
     )
 
 
