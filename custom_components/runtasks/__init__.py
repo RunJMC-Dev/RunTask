@@ -102,7 +102,14 @@ def _register_panel(hass: HomeAssistant) -> None:
         sidebar_title="RunTasks",
         sidebar_icon="mdi:clipboard-text",
         require_admin=True,
-        config={"name": "runtasks-panel", "module_url": "/runtasks-static/runtasks-panel.js"},
+        config={
+            "_panel_custom": {
+                "name": "runtasks-panel",
+                "module_url": "/runtasks-static/runtasks-panel.js",
+                "embed_iframe": False,
+                "trust_external": False,
+            }
+        },
     )
 
 
