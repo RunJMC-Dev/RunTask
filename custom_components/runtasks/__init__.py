@@ -85,7 +85,16 @@ def _async_handle_run_now(hass: HomeAssistant):
 
 def _register_panel(hass: HomeAssistant) -> None:
     if STATIC_DIR.exists():
-        hass.http.register_static_path("/runtasks-static", str(STATIC_DIR), cache_headers=False)
+        register_static = getattr(hass.http, "register_static_path", None)
+        if register_static:
+            register_static("/runtasks-static", str(STATIC_DIR), cache_headers=False)
+        else:
+            try:
+                # Fallback for HA versions where register_static_path is removed
+                hass.http.app.router.add_static("/runtasks-static", str(STATIC_DIR))
+            except Exception as err:  # pragma: no cover - defensive logging
+                _LOGGER.error("Failed to register RunTasks static path: %s", err)
+                return
     frontend.async_register_built_in_panel(
         hass,
         component_name="custom",

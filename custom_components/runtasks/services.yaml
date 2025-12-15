@@ -1,0 +1,11 @@
+run_now:
+  name: Run Now
+  description: Run due tasks immediately. When entry_id is omitted, all loaded RunTasks entries will run.
+  fields:
+    entry_id:
+      name: Entry ID
+      description: Optional config entry id to target; runs all entries if not provided.
+      required: false
+      example: "abc123def456"
+      selector:
+        text:
