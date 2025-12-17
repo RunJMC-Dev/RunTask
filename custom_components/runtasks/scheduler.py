@@ -53,7 +53,7 @@ async def process_due_tasks(hass: HomeAssistant, tasks: List[Dict]) -> None:
         resp = await hass.services.async_call(
             "todo",
             "get_items",
-            {"entity_id": list_entity, "data": {"status": ["needs_action"]}},
+            {"entity_id": list_entity, "status": ["needs_action"]},
             blocking=True,
             return_response=True,
         )
@@ -65,6 +65,6 @@ async def process_due_tasks(hass: HomeAssistant, tasks: List[Dict]) -> None:
         await hass.services.async_call(
             "todo",
             "add_item",
-            {"entity_id": list_entity, "data": {"item": name, "due_datetime": due}},
+            {"entity_id": list_entity, "item": name, "due_datetime": due},
             blocking=True,
         )
