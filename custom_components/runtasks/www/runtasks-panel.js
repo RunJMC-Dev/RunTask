@@ -1,4 +1,4 @@
-﻿class RunTasksPanel extends HTMLElement {
+class RunTasksPanel extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -112,6 +112,24 @@
 
   render() {
     if (!this.shadowRoot) return;
+
+    // Preserve add-form input during re-render so we don't wipe user typing.
+    const snapshot = (() => {
+      const form = this.shadowRoot.querySelector("form");
+      if (!form) return null;
+      const active = this.shadowRoot.activeElement;
+      const activeName = active && form.contains(active) ? active.getAttribute("name") : null;
+      return {
+        values: {
+          name: form.name?.value ?? "",
+          start_date: form.start_date?.value ?? "",
+          period_days: form.period_days?.value ?? "",
+          list: form.list?.value ?? "",
+        },
+        activeName,
+      };
+    })();
+
     const style = `
       :host { display: block; padding: 16px; }
       .card { background: #fff; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); padding: 16px; }
@@ -128,6 +146,7 @@
       .footer { margin-top: 16px; display: flex; justify-content: space-between; align-items: center; }
       .error { color: #b91c1c; margin-bottom: 8px; }
     `;
+
     const rows = this.tasks.map((t, idx) => {
       if (this.editIndex === idx) {
         return `
@@ -177,7 +196,24 @@
         </div>
       </div>
     `;
+
     this.shadowRoot.innerHTML = tpl;
+
+    if (snapshot) {
+      const form = this.shadowRoot.querySelector("form");
+      if (form) {
+        const { values, activeName } = snapshot;
+        if (form.name) form.name.value = values.name;
+        if (form.start_date) form.start_date.value = values.start_date;
+        if (form.period_days) form.period_days.value = values.period_days;
+        if (form.list) form.list.value = values.list;
+        if (activeName && form[activeName]) {
+          form[activeName].focus();
+          const len = form[activeName].value.length;
+          form[activeName].setSelectionRange(len, len);
+        }
+      }
+    }
 
     const form = this.shadowRoot.querySelector("form");
     form?.addEventListener("submit", (e) => this._onAdd(e));
