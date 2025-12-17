@@ -16,6 +16,7 @@ from .scheduler import schedule_midnight_daily
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.BUTTON]
 PANEL_URL = "runtasks"
+PANEL_VERSION = "1.0.1"  # bump to bust cached panel assets when UI changes
 STATIC_DIR = Path(__file__).parent / "www"
 
 
@@ -105,7 +106,7 @@ def _register_panel(hass: HomeAssistant) -> None:
         config={
             "_panel_custom": {
                 "name": "runtasks-panel",
-                "module_url": "/runtasks-static/runtasks-panel.js",
+                "module_url": f"/runtasks-static/runtasks-panel.js?v={PANEL_VERSION}",
                 "embed_iframe": False,
                 "trust_external": False,
             }
