@@ -4,7 +4,7 @@ RunTasks is a Home Assistant custom integration that drops recurring to-do items
 
 ## Features (v0.1 target)
 - Midnight injector: adds items on their due day at 00:00 local time.
-- Recurring cadence: anchor with `start_date` + `weekday` + `period_days` (e.g., every 14 days on Tuesday).
+- Recurring cadence: anchor with `start_date` + `period_days` (e.g., every 14 days from the start date).
 - Duplicate guard: skips if a `needs_action` item with the same summary already exists.
 - UI config: paste a JSON list of tasks in the config flow; edit later via Options.
 - Built-in panel: add/edit/delete tasks in the RunTasks sidebar page, with a **Test Now** button.
@@ -26,28 +26,25 @@ RunTasks is a Home Assistant custom integration that drops recurring to-do items
     "name": "Red bin",
     "list": "todo.house_chores",
     "start_date": "2025-11-18",
-    "period_days": 14,
-    "weekday": 1
+    "period_days": 14
   },
   {
     "name": "Yellow bin",
     "list": "todo.house_chores",
     "start_date": "2025-11-25",
-    "period_days": 14,
-    "weekday": 1
+    "period_days": 14
   },
   {
     "name": "Vacuuming",
     "list": "todo.house_chores",
     "start_date": "2025-11-15",
-    "period_days": 7,
-    "weekday": 5
+    "period_days": 7
   }
 ]
 ```
 
 Notes:
-- `start_date` is the cadence anchor (e.g., alternating Tuesdays).
+- `start_date` is the cadence anchor (items repeat every `period_days` from that date).
 - Items are added at local midnight on due days.
 - We only add if there is no existing `needs_action` item with the same summary in that list.
 
@@ -61,7 +58,7 @@ Notes:
 - Add the integration through the UI, paste tasks JSON, and save.
 - Open the RunTasks panel from the sidebar (`/runtasks`) to add/edit/delete tasks and hit **Test Now**.
 - Watch logs for: `RunTasks loaded via UI with X task(s)`.
-- For quick testing, use the RunTasks panel **Test Now** button, the `RunTasks: Run Now` button entity, or tweak `weekday`/`start_date` in Options.
+- For quick testing, use the RunTasks panel **Test Now** button, the `RunTasks: Run Now` button entity, or tweak `period_days`/`start_date` in Options.
 
 ## Acceptance criteria (v0.1)
 - Schedules at local midnight after first HA start and reschedules daily.

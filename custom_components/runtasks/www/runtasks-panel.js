@@ -53,10 +53,9 @@
       name: form.name.value.trim(),
       list: form.list.value.trim(),
       start_date: form.start_date.value,
-      weekday: parseInt(form.weekday.value, 10),
       period_days: parseInt(form.period_days.value, 10),
     };
-    if (!task.name || !task.list || !task.start_date || !task.period_days || Number.isNaN(task.weekday)) {
+    if (!task.name || !task.list || !task.start_date || !task.period_days || Number.isNaN(task.period_days)) {
       this.error = "All fields required";
       this.render();
       return;
@@ -88,10 +87,9 @@
       name: row.querySelector("input[name='name']").value.trim(),
       list: row.querySelector("input[name='list']").value.trim(),
       start_date: row.querySelector("input[name='start_date']").value,
-      weekday: parseInt(row.querySelector("select[name='weekday']").value, 10),
       period_days: parseInt(row.querySelector("input[name='period_days']").value, 10),
     };
-    if (!task.name || !task.list || !task.start_date || !task.period_days || Number.isNaN(task.weekday)) {
+    if (!task.name || !task.list || !task.start_date || !task.period_days || Number.isNaN(task.period_days)) {
       this.error = "All fields required";
       this.render();
       return;
@@ -131,18 +129,12 @@
       .footer { margin-top: 16px; display: flex; justify-content: space-between; align-items: center; }
       .error { color: #b91c1c; margin-bottom: 8px; }
     `;
-    const weekdayOptions = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
     const rows = this.tasks.map((t, idx) => {
       if (this.editIndex === idx) {
         return `
           <tr data-row="${idx}">
             <td><input name="name" value="${t.name}" /></td>
             <td><input name="start_date" type="date" value="${t.start_date}" /></td>
-            <td>
-              <select name="weekday">
-                ${weekdayOptions.map((w,i)=>`<option value="${i}" ${t.weekday==i?"selected":""}>${w}</option>`).join("")}
-              </select>
-            </td>
             <td><input name="period_days" type="number" min="1" value="${t.period_days}" /></td>
             <td><input name="list" value="${t.list}" /></td>
             <td class="row-actions">
@@ -155,7 +147,6 @@
         <tr>
           <td>${t.name}</td>
           <td>${t.start_date}</td>
-          <td>${weekdayOptions[t.weekday] ?? t.weekday}</td>
           <td>${t.period_days}</td>
           <td>${t.list}</td>
           <td class="row-actions">
@@ -173,14 +164,13 @@
         <form>
           <label>Name<input name="name" placeholder="Task name" /></label>
           <label>Start date<input name="start_date" type="date" /></label>
-          <label>Weekday<select name="weekday">${weekdayOptions.map((w,i)=>`<option value="${i}">${w}</option>`).join("")}</select></label>
           <label>Period (days)<input name="period_days" type="number" min="1" /></label>
           <label>List entity<input name="list" placeholder="todo.house_chores" /></label>
           <button class="add" type="submit">Add</button>
         </form>
         <table>
-          <thead><tr><th>Name</th><th>Start</th><th>Weekday</th><th>Period</th><th>List</th><th></th></tr></thead>
-          <tbody>${rows || `<tr><td colspan="6">No tasks yet</td></tr>`}</tbody>
+          <thead><tr><th>Name</th><th>Start</th><th>Period</th><th>List</th><th></th></tr></thead>
+          <tbody>${rows || `<tr><td colspan="5">No tasks yet</td></tr>`}</tbody>
         </table>
         <div class="footer">
           <div>Tasks add at local midnight daily.</div>

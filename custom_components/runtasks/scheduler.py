@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.util import dt as dt_util
 
-from .const import MIDNIGHT_FMT, K_NAME, K_LIST, K_START_DATE, K_PERIOD_DAYS, K_WEEKDAY
+from .const import MIDNIGHT_FMT, K_NAME, K_LIST, K_START_DATE, K_PERIOD_DAYS
 
 
 async def schedule_midnight_daily(hass: HomeAssistant, tasks: List[Dict]) -> Callable[[], None]:
@@ -45,10 +45,6 @@ async def process_due_tasks(hass: HomeAssistant, tasks: List[Dict]) -> None:
         list_entity = t[K_LIST]
         start = datetime.strptime(t[K_START_DATE], "%Y-%m-%d").date()
         period = int(t[K_PERIOD_DAYS])
-        weekday = int(t[K_WEEKDAY])
-
-        if today.weekday() != weekday:
-            continue
         days_since = (today - start).days
         if days_since < 0 or days_since % period != 0:
             continue

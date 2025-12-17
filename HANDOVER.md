@@ -1,7 +1,7 @@
 ﻿RunTasks - Handover for Codex
 0) Mission & Scope
 
-Goal: A Home Assistant custom integration that adds items to existing to-do list entities on a recurring schedule (e.g., "Red Bin every 2nd Tuesday", "Vacuuming every Saturday"), with items appearing at local midnight on their due day.
+Goal: A Home Assistant custom integration that adds items to existing to-do list entities on a recurring schedule (e.g., "Red Bin every 14 days starting 2025-11-18", "Vacuuming every 7 days from 2025-11-15"), with items appearing at local midnight on their due day.
 
 Out of scope (v0.1):
 - Editing/marking to-dos beyond using core todo.* actions.
@@ -63,14 +63,12 @@ DEFAULT_TASKS = [
         "list": "todo.house_chores",
         "start_date": "2025-11-18",
         "period_days": 14,
-        "weekday": 1,
     },
     {
         "name": "Yellow bin",
         "list": "todo.house_chores",
         "start_date": "2025-11-25",
         "period_days": 14,
-        "weekday": 1,
     },
 ]
 
@@ -79,7 +77,6 @@ K_NAME = "name"
 K_LIST = "list"
 K_START_DATE = "start_date"     # "YYYY-MM-DD" (local date)
 K_PERIOD_DAYS = "period_days"   # int
-K_WEEKDAY = "weekday"           # 0=Mon..6=Sun
 
 MIDNIGHT_FMT = "%Y-%m-%d %H:%M:%S"  # due_datetime format
 
@@ -89,7 +86,7 @@ import json
 from datetime import datetime
 from typing import Any
 
-from .const import K_NAME, K_LIST, K_START_DATE, K_PERIOD_DAYS, K_WEEKDAY
+from .const import K_NAME, K_LIST, K_START_DATE, K_PERIOD_DAYS
 
 def parse_tasks_blob(blob: str) -> list[dict[str, Any]]:
     """Parse tasks from a JSON blob provided via the UI."""
@@ -105,16 +102,14 @@ def validate_tasks(raw: list[dict[str, Any]]) -> list[dict[str, Any]]:
     out = []
     for i, t in enumerate(raw or []):
         try:
-            _ = t[K_NAME]
-            _ = t[K_LIST]
-            _ = datetime.strptime(t[K_START_DATE], "%Y-%m-%d")  # validate
+            name = t[K_NAME]
+            list_entity = t[K_LIST]
+            start_date = t[K_START_DATE]
+            _ = datetime.strptime(start_date, "%Y-%m-%d")  # validate
             pd = int(t[K_PERIOD_DAYS])
-            wd = int(t[K_WEEKDAY])
-            if not (0 <= wd <= 6):
-                raise ValueError("weekday must be 0..6")
             if pd <= 0:
                 raise ValueError("period_days must be > 0")
-            out.append(t)
+            out.append({K_NAME: name, K_LIST: list_entity, K_START_DATE: start_date, K_PERIOD_DAYS: pd})
         except Exception as e:
             raise ValueError(f"Invalid task at index {i}: {e}") from e
     return out
@@ -229,10 +224,6 @@ async def process_due_tasks(hass: HomeAssistant, tasks: List[Dict]):
         list_entity = t[K_LIST]
         start = datetime.strptime(t[K_START_DATE], "%Y-%m-%d").date()
         period = int(t[K_PERIOD_DAYS])
-        weekday = int(t[K_WEEKDAY])
-
-        if today.weekday() != weekday:
-            continue
         days_since = (today - start).days
         if days_since < 0 or days_since % period != 0:
             continue
@@ -461,28 +452,25 @@ Paste tasks JSON when prompted (example):
     "name": "Red bin",
     "list": "todo.house_chores",
     "start_date": "2025-11-18",
-    "period_days": 14,
-    "weekday": 1
+    "period_days": 14
   },
   {
     "name": "Yellow bin",
     "list": "todo.house_chores",
     "start_date": "2025-11-25",
-    "period_days": 14,
-    "weekday": 1
+    "period_days": 14
   },
   {
     "name": "Vacuuming",
     "list": "todo.house_chores",
     "start_date": "2025-11-15",
-    "period_days": 7,
-    "weekday": 5
+    "period_days": 7
   }
 ]
 
 Notes
 
-start_date establishes the cadence anchor (e.g., alternate Tuesdays).
+start_date establishes the cadence anchor (tasks repeat every period_days from that date).
 
 Items are injected with due_datetime at 00:00 local time on due days.
 
@@ -502,7 +490,7 @@ Verify logs: "RunTasks loaded via UI with %d task(s)".
 
 Create/identify a to-do list entity (e.g., Local To-do -> todo.house_chores).
 
-(Dev) Temporarily change weekday/start_date in the panel or Options to force a due condition and confirm item injection by running Test Now or advancing system date/time in a test env.
+(Dev) Temporarily change start_date/period_days in the panel or Options to force a due condition and confirm item injection by running Test Now or advancing system date/time in a test env.
 
 6) Acceptance Criteria (v0.1)
 
@@ -514,9 +502,9 @@ Create/identify a to-do list entity (e.g., Local To-do -> todo.house_chores).
 
 7) Test Plan (manual)
 
-Unit cadence: Use two bin tasks with 14-day periods and staggered start_dates a week apart; verify they alternate Tuesdays.
+Unit cadence: Use two bin tasks with 14-day periods and staggered start_dates a week apart; verify they alternate on their 14-day cycles (one week offset).
 
-Weekly task: Vacuuming with period_days: 7 on weekday: 5; verify every Saturday.
+Weekly task: Vacuuming with period_days: 7; verify every 7 days from the anchor start_date.
 
 Duplicate prevention: Pre-create Red bin in the list and run midnight job; ensure no second item is added.
 
