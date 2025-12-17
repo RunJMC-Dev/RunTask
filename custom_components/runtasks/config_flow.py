@@ -24,22 +24,8 @@ class RunTasksConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        errors: dict[str, str] = {}
-        placeholders = {"example": json.dumps(DEFAULT_TASKS, indent=2), "error": ""}
-        if user_input is not None:
-            try:
-                tasks = parse_tasks_blob(user_input[CONF_TASKS])
-                return self.async_create_entry(title="RunTasks", data={CONF_TASKS: tasks})
-            except ValueError as err:
-                errors["base"] = "invalid_tasks"
-                placeholders["error"] = str(err)
-
-        return self.async_show_form(
-            step_id="user",
-            data_schema=_tasks_schema(None),
-            errors=errors,
-            description_placeholders=placeholders,
-        )
+        # Skip the initial tasks prompt; start with an empty task list.
+        return self.async_create_entry(title="RunTasks", data={CONF_TASKS: []})
 
 
 class RunTasksOptionsFlowHandler(config_entries.OptionsFlow):

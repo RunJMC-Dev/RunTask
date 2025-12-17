@@ -9,10 +9,9 @@
 
   set hass(hass) {
     this._hass = hass;
-    if (!this._init) {
-      this._init = true;
-      this._load();
-    }
+    if (this._init) return; // avoid re-rendering on every HA state update (keeps form input stable)
+    this._init = true;
+    this._load();
     this.render();
   }
 
