@@ -42,7 +42,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         cancel = await schedule_midnight_daily(hass, tasks)
         hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {DATA_UNSUB: cancel, CONF_TASKS: tasks}
 
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _on_started)
+    if hass.is_running:
+        await _on_started(None)
+    else:
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _on_started)
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _LOGGER.info("RunTasks loaded via UI with %d task(s)", len(tasks))
