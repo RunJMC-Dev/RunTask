@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+from datetime import datetime
 from pathlib import Path
 
 from homeassistant.components import frontend, websocket_api
@@ -16,8 +17,17 @@ from .scheduler import schedule_midnight_daily
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.BUTTON]
 PANEL_URL = "runtasks"
-PANEL_VERSION = "1.0.1"  # bump to bust cached panel assets when UI changes
+PANEL_VERSION = "1.0.2"  # bump to bust cached panel assets when UI changes
 STATIC_DIR = Path(__file__).parent / "www"
+
+
+def _parse_target_date(raw: str | None):
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").date()
+    except ValueError as err:
+        raise ValueError("date must be YYYY-MM-DD") from err
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -27,7 +37,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             DOMAIN,
             SERVICE_RUN_NOW,
             _async_handle_run_now(hass),
-            vol.Schema({vol.Optional("entry_id"): str}),
+            vol.Schema({vol.Optional("entry_id"): str, vol.Optional("date"): str}),
         )
     _register_panel(hass)
     _register_ws(hass)
@@ -69,6 +79,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 def _async_handle_run_now(hass: HomeAssistant):
     async def handler(call):
         entry_id = call.data.get("entry_id")
+        target_date = _parse_target_date(call.data.get("date"))
         entries = hass.data.get(DOMAIN, {})
         targets = [entry_id] if entry_id else list(entries.keys())
         if not targets:
@@ -82,7 +93,7 @@ def _async_handle_run_now(hass: HomeAssistant):
                 _LOGGER.warning("RunTasks run_now: entry_id %s not found", eid)
                 continue
             tasks = data.get(CONF_TASKS, [])
-            await process_due_tasks(hass, tasks)
+            await process_due_tasks(hass, tasks, target_date)
 
     return handler
 
@@ -159,11 +170,17 @@ def _register_ws(hass: HomeAssistant) -> None:
         {
             vol.Required("type"): "runtasks/run_now",
             vol.Required("entry_id"): str,
+            vol.Optional("date"): str,
         }
     )
     @websocket_api.async_response
     async def ws_run_now(hass: HomeAssistant, connection, msg):
         entry_id = msg["entry_id"]
+        try:
+            target_date = _parse_target_date(msg.get("date"))
+        except ValueError as err:
+            connection.send_error(msg["id"], "invalid", str(err))
+            return
         entries = hass.data.get(DOMAIN, {})
         data = entries.get(entry_id)
         if not data:
@@ -171,7 +188,7 @@ def _register_ws(hass: HomeAssistant) -> None:
             return
         from .scheduler import process_due_tasks  # local import to avoid cycle
 
-        await process_due_tasks(hass, data.get(CONF_TASKS, []))
+        await process_due_tasks(hass, data.get(CONF_TASKS, []), target_date)
         connection.send_result(msg["id"], {"status": "ok"})
 
     websocket_api.async_register_command(hass, ws_list)

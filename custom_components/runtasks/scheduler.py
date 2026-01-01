@@ -37,9 +37,10 @@ async def schedule_midnight_daily(hass: HomeAssistant, tasks: List[Dict]) -> Cal
     return cancel
 
 
-async def process_due_tasks(hass: HomeAssistant, tasks: List[Dict]) -> None:
+async def process_due_tasks(hass: HomeAssistant, tasks: List[Dict], target_date: date | None = None) -> None:
+    """Process tasks due on the target date (defaults to today)."""
     tz_now = dt_util.now()  # aware dt in HA local tz
-    today: date = tz_now.date()
+    today: date = target_date or tz_now.date()
     for t in tasks:
         name = t[K_NAME]
         list_entity = t[K_LIST]

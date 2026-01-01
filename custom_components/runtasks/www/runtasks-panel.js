@@ -5,6 +5,7 @@ class RunTasksPanel extends HTMLElement {
     this.tasks = [];
     this.entryId = null;
     this.editIndex = null;
+    this.testDate = "";
   }
 
   set hass(hass) {
@@ -101,9 +102,13 @@ class RunTasksPanel extends HTMLElement {
   }
 
   async _onRunNow() {
+    const payload = { type: "runtasks/run_now", entry_id: this.entryId };
+    if (this.testDate) {
+      payload.date = this.testDate;
+    }
     try {
-      await this._hass.callWS({ type: "runtasks/run_now", entry_id: this.entryId });
-      this.error = "Triggered";
+      await this._hass.callWS(payload);
+      this.error = this.testDate ? `Triggered for ${this.testDate}` : "Triggered for today";
     } catch (e) {
       this.error = e.message || "Run failed";
     }
@@ -145,6 +150,8 @@ class RunTasksPanel extends HTMLElement {
       .row-actions { display: flex; gap: 8px; }
       .footer { margin-top: 16px; display: flex; justify-content: space-between; align-items: center; }
       .error { color: #b91c1c; margin-bottom: 8px; }
+      .test { display: flex; align-items: center; gap: 8px; }
+      .test input { max-width: 170px; }
     `;
 
     const rows = this.tasks.map((t, idx) => {
@@ -192,7 +199,10 @@ class RunTasksPanel extends HTMLElement {
         </table>
         <div class="footer">
           <div>Tasks add at local midnight daily.</div>
-          <button class="secondary" data-action="run-now">Test Now</button>
+          <div class="test">
+            <label>Test date<input type="date" name="test_date" value="${this.testDate}" /></label>
+            <button class="secondary" data-action="run-now">Test Now</button>
+          </div>
         </div>
       </div>
     `;
@@ -231,6 +241,9 @@ class RunTasksPanel extends HTMLElement {
       btn.addEventListener("click", () => { this.editIndex = null; this.render(); });
     });
     this.shadowRoot.querySelector("button[data-action='run-now']")?.addEventListener("click", () => this._onRunNow());
+    this.shadowRoot.querySelector("input[name='test_date']")?.addEventListener("change", (e) => {
+      this.testDate = e.target.value;
+    });
   }
 }
 
